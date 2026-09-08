@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日报工作台 · Daily Report Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#111418;
+  --ink-2:#1a1f26;
+  --ink-3:#232a33;
+  --paper:#e8e4da;
+  --paper-dim:#a8a49a;
+  --accent:#e05d38;
+  --accent-soft:rgba(224,93,56,.14);
+  --green:#7fb069;
+  --line:rgba(232,228,218,.1);
+  --line-strong:rgba(232,228,218,.18);
+  --mono:'JetBrains Mono',monospace;
+  --serif:'Noto Serif SC',serif;
+  --sans:'Noto Sans SC',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--ink);
+  color:var(--paper);
+  font-family:var(--sans);
+  overflow:hidden;
+  position:relative;
+}
+/* 氛围背景 */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 85% 10%,rgba(224,93,56,.07),transparent 60%),
+    radial-gradient(ellipse 50% 60% at 0% 100%,rgba(127,176,105,.05),transparent 60%);
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:99;opacity:.35;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+.app{display:flex;height:100vh;position:relative;z-index:1}
+
+/* ============ 侧边栏 ============ */
+.sidebar{
+  width:248px;flex-shrink:0;background:var(--ink-2);
+  border-right:1px solid var(--line);
+  display:flex;flex-direction:column;
+  animation:slideIn .5s cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes slideIn{from{transform:translateX(-20px);opacity:0}to{transform:none;opacity:1}}
+.brand{padding:26px 22px 20px;border-bottom:1px solid var(--line)}
+.brand h1{
+  font-family:var(--serif);font-weight:900;font-size:21px;letter-spacing:.06em;
+  display:flex;align-items:center;gap:10px;
+}
+.brand h1 .seal{
+  width:30px;height:30px;background:var(--accent);border-radius:6px;
+  display:grid;place-items:center;font-size:15px;color:#fff;
+  font-family:var(--serif);transform:rotate(-4deg);
+  box-shadow:0 4px 14px rgba(224,93,56,.4);
+}
+.brand p{font-family:var(--mono);font-size:10.5px;color:var(--paper-dim);margin-top:7px;letter-spacing:.12em}
+.nav-label{
+  padding:20px 22px 8px;font-size:11px;letter-spacing:.28em;
+  color:var(--paper-dim);font-weight:500;
+}
+.proj-list{flex:1;overflow-y:auto;padding:0 12px}
+.proj{
+  padding:12px 12px 12px 14px;border-radius:10px;cursor:pointer;
+  margin-bottom:4px;position:relative;transition:all .2s;
+  border:1px solid transparent;
+}
+.proj:hover{background:var(--ink-3)}
+.proj.active{
+  background:var(--accent-soft);border-color:rgba(224,93,56,.25);
+}
+.proj.active::before{
+  content:'';position:absolute;left:0;top:20%;bottom:20%;width:3px;
+  background:var(--accent);border-radius:3px;
+}
+.proj-top{display:flex;align-items:center;justify-content:space-between}
+.proj-name{font-family:var(--serif);font-weight:700;font-size:15px;letter-spacing:.04em}
+.proj-top .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px rgba(127,176,105,.7)}
+.proj-meta{font-family:var(--mono);font-size:10px;color:var(--paper-dim);margin-top:5px;letter-spacing:.02em}
+.add-proj{
+  margin:8px 12px 16px;padding:10px;border:1px dashed var(--line-strong);
+  border-radius:10px;text-align:center;font-size:12.5px;color:var(--paper-dim);
+  cursor:pointer;transition:all .2s;
+}
+.add-proj:hover{color:var(--accent);border-color:rgba(224,93,56,.4);background:var(--accent-soft)}
+.global-stat{
+  margin:0 16px 20px;padding:14px 16px;border-radius:12px;
+  background:linear-gradient(145deg,var(--ink-3),var(--ink-2));
+  border:1px solid var(--line);
+}
+.global-stat .row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--paper-dim);padding:3px 0}
+.global-stat .row b{color:var(--paper);font-weight:600}
+.global-stat .row b.hot{color:var(--accent)}
+
+/* ============ 主区域 ============ */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;animation:fadeIn .6s .15s both}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* 项目头部 */
+.proj-header{
+  padding:26px 36px 20px;border-bottom:1px solid var(--line);
+  display:flex;align-items:flex-end;justify-content:space-between;
+  background:linear-gradient(180deg,rgba(35,42,51,.5),transparent);
+}
+.proj-title h2{font-family:var(--serif);font-weight:900;font-size:26px;letter-spacing:.05em}
+.proj-title h2 small{font-size:13px;color:var(--paper-dim);font-weight:400;margin-left:12px;letter-spacing:.2em}
+.proj-title .repos{display:flex;gap:14px;margin-top:9px;font-family:var(--mono);font-size:11px;color:var(--paper-dim)}
+.proj-title .repos span::before{content:'⌥ ';color:var(--accent);opacity:.8}
+.actions{display:flex;gap:10px}
+.btn{
+  font-family:var(--sans);font-size:13px;font-weight:500;letter-spacing:.06em;
+  padding:10px 20px;border-radius:9px;cursor:pointer;transition:all .2s;
+  border:1px solid var(--line-strong);background:transparent;color:var(--paper);
+}
+.btn:hover{border-color:var(--paper-dim);background:var(--ink-3)}
+.btn.primary{
+  background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700;
+  box-shadow:0 4px 16px rgba(224,93,56,.35);
+}
+.btn.primary:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(224,93,56,.5)}
+.btn.primary:disabled{opacity:.55;cursor:wait;transform:none}
+
+/* 内容区 */
+.content{flex:1;display:flex;min-height:0}
+
+/* 日期时间轴 */
+.timeline{
+  width:200px;flex-shrink:0;border-right:1px solid var(--line);
+  overflow-y:auto;padding:18px 10px;
+}
+.tl-item{
+  position:relative;padding:11px 14px;border-radius:9px;cursor:pointer;
+  font-family:var(--mono);font-size:12.5px;color:var(--paper-dim);
+  transition:all .18s;margin-bottom:2px;
+}
+.tl-item:hover{color:var(--paper);background:var(--ink-2)}
+.tl-item.active{color:var(--paper);background:var(--ink-3);font-weight:600}
+.tl-item.active::after{
+  content:'';position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  width:5px;height:5px;border-radius:50%;background:var(--accent);
+}
+.tl-item .weekday{float:right;font-size:10px;opacity:.6}
+.tl-item.empty{opacity:.4}
+
+/* 日报详情 */
+.report{
+  flex:1;overflow-y:auto;padding:30px 40px 60px;min-width:0;
+}
+.report-date{
+  font-family:var(--serif);font-weight:900;font-size:30px;letter-spacing:.03em;
+  display:flex;align-items:baseline;gap:14px;margin-bottom:4px;
+}
+.report-date .wd{font-size:14px;color:var(--accent);font-weight:600;letter-spacing:.3em}
+.report-sub{font-family:var(--mono);font-size:11px;color:var(--paper-dim);margin-bottom:26px;letter-spacing:.05em}
+.sec{margin-bottom:30px;animation:secIn .5s both}
+.sec:nth-child(2){animation-delay:.08s}
+.sec:nth-child(3){animation-delay:.16s}
+.sec:nth-child(4){animation-delay:.24s}
+@keyframes secIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.sec-title{
+  font-family:var(--serif);font-size:14px;font-weight:700;letter-spacing:.24em;
+  color:var(--paper);display:flex;align-items:center;gap:12px;margin-bottom:14px;
+}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--line)}
+.sec-title .idx{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:0}
+.sum-item{
+  position:relative;padding:9px 0 9px 22px;font-size:14px;line-height:1.75;
+  color:rgba(232,228,218,.9);font-weight:300;
+}
+.sum-item::before{
+  content:'';position:absolute;left:2px;top:19px;width:8px;height:8px;
+  border:2px solid var(--accent);border-radius:50%;
+}
+.commit{
+  font-family:var(--mono);font-size:12.5px;padding:9px 14px;border-radius:8px;
+  background:var(--ink-2);border:1px solid var(--line);margin-bottom:6px;
+  display:flex;gap:12px;align-items:baseline;line-height:1.6;
+  transition:border-color .2s;
+}
+.commit:hover{border-color:var(--line-strong)}
+.commit .hash{color:var(--accent);font-weight:600;flex-shrink:0}
+.commit .time{color:var(--paper-dim);flex-shrink:0;font-size:11px}
+.commit .msg{color:rgba(232,228,218,.85);word-break:break-all}
+.commit .tag{
+  flex-shrink:0;font-size:10px;padding:2px 7px;border-radius:5px;
+  align-self:center;letter-spacing:.05em;
+}
+.tag.feat{background:rgba(127,176,105,.15);color:var(--green)}
+.tag.fix{background:rgba(224,93,56,.15);color:var(--accent)}
+.tag.chore,.tag.perf{background:rgba(120,140,200,.15);color:#98a8dc}
+.repo-label{font-family:var(--mono);font-size:10.5px;color:var(--paper-dim);letter-spacing:.2em;margin:14px 0 8px}
+.stat-cards{display:flex;gap:14px;flex-wrap:wrap}
+.stat-card{
+  flex:1;min-width:150px;padding:16px 18px;border-radius:12px;
+  background:var(--ink-2);border:1px solid var(--line);
+}
+.stat-card .label{font-size:11px;color:var(--paper-dim);letter-spacing:.15em;margin-bottom:8px}
+.stat-card .nums{font-family:var(--mono);font-size:19px;font-weight:600}
+.stat-card .nums .ins{color:var(--green)}
+.stat-card .nums .del{color:var(--accent)}
+.stat-card .nums small{font-size:11px;color:var(--paper-dim);font-weight:400}
+
+/* 终端面板 */
+.terminal{
+  height:0;overflow:hidden;transition:height .4s cubic-bezier(.2,.8,.2,1);
+  border-top:1px solid var(--line-strong);background:#0b0e12;
+}
+.terminal.open{height:220px}
+.term-head{
+  display:flex;align-items:center;gap:10px;padding:10px 20px;
+  border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;
+  color:var(--paper-dim);letter-spacing:.1em;
+}
+.term-head .lights{display:flex;gap:6px}
+.term-head .lights i{width:10px;height:10px;border-radius:50%;display:block}
+.term-head .lights i:nth-child(1){background:#ff5f57}
+.term-head .lights i:nth-child(2){background:#febc2e}
+.term-head .lights i:nth-child(3){background:#28c840}
+.term-body{
+  padding:14px 20px;font-family:var(--mono);font-size:12px;line-height:1.9;
+  overflow-y:auto;height:calc(100% - 41px);color:rgba(232,228,218,.8);
+}
+.term-body .ok{color:var(--green)}
+.term-body .cmd{color:var(--accent)}
+.term-body .dim{color:var(--paper-dim)}
+.cursor-blink::after{content:'▊';animation:blink 1s steps(1) infinite;color:var(--accent)}
+@keyframes blink{50%{opacity:0}}
+
+/* 模态框 */
+.modal-mask{
+  position:fixed;inset:0;background:rgba(10,12,15,.7);backdrop-filter:blur(6px);
+  z-index:100;display:none;place-items:center;
+}
+.modal-mask.show{display:grid;animation:fadeIn .2s}
+.modal{
+  width:440px;background:var(--ink-2);border:1px solid var(--line-strong);
+  border-radius:16px;padding:30px 32px;
+  box-shadow:0 24px 80px rgba(0,0,0,.6);
+  animation:popIn .3s cubic-bezier(.2,1.2,.3,1) both;
+}
+@keyframes popIn{from{transform:scale(.92) translateY(12px);opacity:0}to{transform:none;opacity:1}}
+.modal h3{font-family:var(--serif);font-size:19px;font-weight:900;letter-spacing:.08em;margin-bottom:22px}
+.modal h3::before{content:'✎ ';color:var(--accent)}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11.5px;color:var(--paper-dim);letter-spacing:.15em;margin-bottom:7px}
+.field input{
+  width:100%;padding:11px 14px;border-radius:9px;border:1px solid var(--line-strong);
+  background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:12.5px;
+  transition:border-color .2s;outline:none;
+}
+.field input:focus{border-color:var(--accent)}
+.field input::placeholder{color:rgba(168,164,154,.4)}
+.modal-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:24px}
+
+/* toast */
+.toast{
+  position:fixed;top:24px;right:24px;z-index:200;
+  padding:13px 20px;border-radius:11px;background:var(--ink-3);
+  border:1px solid var(--line-strong);font-size:13px;
+  box-shadow:0 12px 40px rgba(0,0,0,.5);
+  display:flex;align-items:center;gap:10px;
+  transform:translateX(140%);transition:transform .35s cubic-bezier(.2,.9,.3,1.2);
+}
+.toast.show{transform:none}
+.toast .ico{color:var(--green);font-size:15px}
+
+/* 空状态 */
+.empty-state{
+  height:100%;display:grid;place-items:center;text-align:center;color:var(--paper-dim);
+}
+.empty-state .glyph{font-family:var(--serif);font-size:52px;opacity:.25;margin-bottom:16px}
+.empty-state p{font-size:13px;letter-spacing:.1em}
+
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-thumb{background:var(--ink-3);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--line-strong)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <h1><span class="seal">日</span>日报工作台</h1>
+      <p>DAILY · REPORT · STUDIO</p>
+    </div>
+    <div class="nav-label">项目</div>
+    <div class="proj-list" id="projList"></div>
+    <div class="add-proj" onclick="openAddProject()">＋ 新增项目</div>
+    <div class="global-stat">
+      <div class="row"><span>本周提交</span><b class="hot">6</b></div>
+      <div class="row"><span>本周 +行</span><b>+249</b></div>
+      <div class="row"><span>日报覆盖</span><b>2/2 项目</b></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="proj-header">
+      <div class="proj-title">
+        <h2 id="projTitle">Demo-A<small>DEMO PROJECT A</small></h2>
+        <div class="repos" id="projRepos"></div>
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="toast('原型演示：设置面板待实现')">⚙ 设置</button>
+        <button class="btn primary" id="genBtn" onclick="runGenerate()">▶ 立即生成日报</button>
+      </div>
+    </div>
+    <div class="terminal" id="terminal">
+      <div class="term-head">
+        <span class="lights"><i></i><i></i><i></i></span>
+        <span>daily_report.sh — zsh</span>
+      </div>
+      <div class="term-body" id="termBody"></div>
+    </div>
+    <div class="content">
+      <nav class="timeline" id="timeline"></nav>
+      <div class="report" id="report"></div>
+    </div>
+  </main>
+</div>
+
+<!-- 新增项目 -->
+<div class="modal-mask" id="addModal">
+  <div class="modal">
+    <h3>新增项目</h3>
+    <div class="field"><label>项目名称</label><input id="fName" placeholder="如：WAF"></div>
+    <div class="field"><label>后端仓库路径</label><input id="fBe" placeholder="~/Projects/xxx-backend"></div>
+    <div class="field"><label>前端仓库路径</label><input id="fFe" placeholder="~/Projects/xxx-web"></div>
+    <div class="field"><label>Git 作者</label><input id="fAuthor" value="demo-user"></div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeAddProject()">取消</button>
+      <button class="btn primary" onclick="saveProject()">保存项目</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="ico">✓</span><span id="toastMsg"></span></div>
+
+<script>
+const DATA = {
+  demoA: {
+    name:'Demo-A', subtitle:'DEMO PROJECT A',
+    repos:['~/Projects/demo-a-server','~/Projects/demo-a-web'],
+    reports:{
+      '2026-09-04':{wd:'周五',sub:'2 commits · demo-user',
+        summary:['完成功能模块 A 核心链路开发：批量查询替代循环查询，消除 N+1，任务内存占用明显下降','修复数据同步边界问题：同步时跳过异常数据，避免重复写入待确认表'],
+        commits:{backend:[['4c66777','17:02','perf(query): 批量预查消除 N+1 查询，降低内存占用','perf'],['666283a','16:25','fix(sync): 修复数据同步边界问题，避免重复写入','fix']],frontend:[]},
+        stat:{backend:['4','+212','-112'],frontend:null}},
+      '2026-09-03':{wd:'周四',sub:'3 commits · demo-user',
+        summary:['功能模块 A 方案设计与核心接口实现','写入流程重构，增加幂等保护'],
+        commits:{backend:[['a1b2c3d','15:40','feat(module-a): 核心接口实现','feat'],['e4f5a6b','11:02','refactor(sync): 写入流程幂等改造','chore'],['c7d8e9f','09:31','chore(deploy): 部署配置调整','chore']],frontend:[]},
+        stat:{backend:['11','+486','-92'],frontend:null}},
+      '2026-09-02':{wd:'周三',sub:'无提交',
+        summary:['方案设计：功能模块 A 技术方案评审，确定批量预查优化路线'],
+        commits:{backend:[],frontend:[]},stat:{backend:null,frontend:null}}
+    }
+  },
+  demoB: {
+    name:'Demo-B', subtitle:'DEMO PROJECT B',
+    repos:['~/Projects/demo-b-server','~/Projects/demo-b-web'],
+    reports:{
+      '2026-09-04':{wd:'周五',sub:'4 commits · demo-user',
+        summary:['解析任务增加可配置限流参数，控制并发压力，保障服务稳定性','修复任务回填前未重查导致的重复处理问题','生产环境资源规格调整，拆分环境配置实现隔离','解析能力增强：支持聚合容器类文件内容，提升解析完整性'],
+        commits:{backend:[['6672744e','15:20','feat(parser): 解析任务增加可配置限流参数','feat'],['a7b03139','14:22','fix(parser): 回填前重查未完成任务避免重复处理','fix'],['5cf55f84','11:50','chore(deploy): 生产环境资源规格调整并拆分环境配置','chore'],['57d53e08','11:50','feat(parser): 支持聚合容器类文件内容到顶层','fix']],frontend:[]},
+        stat:{backend:['7','+37','-14'],frontend:null}},
+      '2026-09-03':{wd:'周四',sub:'2 commits · demo-user',
+        summary:['解析结果落盘结构优化，中间产物独立存储','消费队列限流初版'],
+        commits:{backend:[['1122a33','16:10','refactor(parser): 解析结果落盘结构优化','chore'],['4455b66','10:24','feat(queue): 消费队列限流初版','feat']],frontend:[['9988x77','14:05','feat(ui): 审计列表筛选增强','feat']]},
+        stat:{backend:['9','+312','-45'],frontend:['3','+128','-36']}}
+    }
+  }
+};
+
+let currentProj = 'demoA';
+let currentDate = null;
+
+function renderSidebar(){
+  const el = document.getElementById('projList');
+  el.innerHTML = Object.entries(DATA).map(([k,p])=>{
+    const today = '2026-09-04';
+    const hasToday = p.reports[today];
+    return `<div class="proj ${k===currentProj?'active':''}" onclick="switchProj('${k}')">
+      <div class="proj-top"><span class="proj-name">${p.name}</span>${hasToday?'<span class="dot" title="今日日报已生成"></span>':''}</div>
+      <div class="proj-meta">${Object.keys(p.reports).length} 篇日报${hasToday?' · 今日 ✓':' · 今日待生成'}</div>
+    </div>`;
+  }).join('');
+}
+
+function switchProj(k){
+  currentProj = k;
+  currentDate = Object.keys(DATA[k].reports).sort().reverse()[0] || null;
+  renderSidebar(); renderHeader(); renderTimeline(); renderReport();
+}
+
+function renderHeader(){
+  const p = DATA[currentProj];
+  document.getElementById('projTitle').innerHTML = `${p.name}<small>${p.subtitle}</small>`;
+  document.getElementById('projRepos').innerHTML = p.repos.map(r=>`<span>${r}</span>`).join('');
+}
+
+function renderTimeline(){
+  const p = DATA[currentProj];
+  const dates = Object.keys(p.reports).sort().reverse();
+  const el = document.getElementById('timeline');
+  el.innerHTML = `<div class="nav-label" style="padding:4px 14px 12px">日期</div>` + dates.map(d=>{
+    const r = p.reports[d];
+    const noCommits = r.commits.backend.length===0 && r.commits.frontend.length===0;
+    return `<div class="tl-item ${d===currentDate?'active':''} ${noCommits?'empty':''}" onclick="pickDate('${d}')">
+      ${d}<span class="weekday">${r.wd}</span></div>`;
+  }).join('');
+}
+
+function pickDate(d){ currentDate=d; renderTimeline(); renderReport(); }
+
+function commitRow([hash,time,msg,tag]){
+  return `<div class="commit"><span class="hash">${hash}</span><span class="time">${time}</span><span class="tag ${tag}">${tag}</span><span class="msg">${msg}</span></div>`;
+}
+
+function statCard(label,s){
+  return `<div class="stat-card"><div class="label">${label}</div><div class="nums">${s?`<span class="ins">+${s[1]}</span> <span class="del">-${s[2]}</span> <small>/ ${s[0]} 文件</small>`:'<small>无变更</small>'}</div></div>`;
+}
+
+function renderReport(){
+  const r = DATA[currentProj].reports[currentDate];
+  const el = document.getElementById('report');
+  if(!r){ el.innerHTML = `<div class="empty-state"><div><div class="glyph">無</div><p>暂无日报 · 点击「立即生成日报」</p></div></div>`; return; }
+  const be = r.commits.backend.map(commitRow).join('') || '<div class="commit" style="opacity:.5"><span class="msg">无</span></div>';
+  const fe = r.commits.frontend.map(commitRow).join('') || '<div class="commit" style="opacity:.5"><span class="msg">无</span></div>';
+  el.innerHTML = `
+    <div class="report-date">${currentDate}<span class="wd">${r.wd}</span></div>
+    <div class="report-sub">▸ ${r.sub}</div>
+    <div class="sec"><div class="sec-title"><span class="idx">01</span>今日工作总结</div>
+      ${r.summary.map(s=>`<div class="sum-item">${s}</div>`).join('')}</div>
+    <div class="sec"><div class="sec-title"><span class="idx">02</span>代码提交明细</div>
+      <div class="repo-label">BACKEND · 后端</div>${be}
+      <div class="repo-label">FRONTEND · 前端</div>${fe}</div>
+    <div class="sec"><div class="sec-title"><span class="idx">03</span>变更统计</div>
+      <div class="stat-cards">${statCard('后端仓库',r.stat.backend)}${statCard('前端仓库',r.stat.frontend)}</div></div>`;
+}
+
+/* 手动执行 */
+const TERM_LINES = [
+  {t:'<span class="dim">$</span> <span class="cmd">./daily_report.sh {{proj}}</span>',d:0},
+  {t:'[{{proj}}] 采集后端仓库提交 · git log --author=demo-user',d:500},
+  {t:'[{{proj}}] 采集前端仓库提交 · 2 repos scanned',d:900},
+  {t:'[{{proj}}] 变更统计汇总完成',d:1300},
+  {t:'[{{proj}}] 调用 Claude 生成日报…',d:1800},
+  {t:'<span class="ok">✓ 已追加 2026-09-04 日报</span>',d:2600},
+  {t:'<span class="ok">[{{proj}}] 完成 → {{proj}}_work_report.md</span>',d:2800}
+];
+function runGenerate(){
+  const btn = document.getElementById('genBtn');
+  const term = document.getElementById('terminal');
+  const body = document.getElementById('termBody');
+  btn.disabled = true; btn.textContent = '⟳ 生成中…';
+  term.classList.add('open'); body.innerHTML = '';
+  TERM_LINES.forEach(l=>{
+    setTimeout(()=>{
+      body.insertAdjacentHTML('beforeend',`<div>${l.t.replaceAll('{{proj}}',currentProj)}</div>`);
+      body.scrollTop = body.scrollHeight;
+    },l.d);
+  });
+  setTimeout(()=>{
+    btn.disabled = false; btn.textContent = '▶ 立即生成日报';
+    toast(`已生成 ${currentProj} 今日日报`);
+    body.insertAdjacentHTML('beforeend','<div class="cursor-blink"></div>');
+  },3100);
+}
+
+/* 项目管理 */
+function openAddProject(){ document.getElementById('addModal').classList.add('show'); }
+function closeAddProject(){ document.getElementById('addModal').classList.remove('show'); }
+function saveProject(){
+  const name = document.getElementById('fName').value.trim();
+  const be = document.getElementById('fBe').value.trim() || '（未配置）';
+  const fe = document.getElementById('fFe').value.trim() || '（未配置）';
+  if(!name){ toast('请填写项目名称'); return; }
+  const key = name.toLowerCase();
+  DATA[key] = {name, subtitle:'NEW PROJECT', repos:[be,fe], reports:{}};
+  closeAddProject();
+  ['fName','fBe','fFe'].forEach(id=>document.getElementById(id).value='');
+  switchProj(key);
+  toast(`项目「${name}」已创建`);
+}
+
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+switchProj('demoA');
+</script>
+</body>
+</html>
