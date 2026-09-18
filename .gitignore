@@ -7,3 +7,4 @@ dist/
 *.db-wal
 *.db-shm
 rs-gen-*
+.ai-tracks/

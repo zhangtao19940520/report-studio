@@ -17,6 +17,9 @@
       "target": [{ "target": "dmg", "arch": ["arm64"] }],
       "category": "public.app-category.productivity"
     },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }]
+    },
     "asarUnpack": ["**/*.node"]
   },
   "scripts": {

@@ -100,7 +100,27 @@ ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ npm run dist
 - 未配置 Apple 开发者证书时会跳过签名，首次打开需在「系统设置 → 隐私与安全性」允许运行
 - 发新版本：修改 `package.json` 的 `version` 后重新 `npm run dist`
 
-其他平台：在 `package.json` 的 `build.mac.target` 中调整，或参考 [electron-builder 文档](https://www.electron.build/) 添加 `win`/`linux` 配置。
+### 打包 Windows 安装包
+
+在 **Windows 机器**上（需已安装 Node.js 和 Git）：
+
+```bash
+# 安装依赖（国内网络 Electron 二进制走镜像）
+# PowerShell：$env:ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"; npm install
+ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ npm install
+
+# 按 Electron ABI 重编译原生模块（安装后执行一次）
+npx @electron/rebuild -f -w better-sqlite3
+
+# 打包 NSIS 安装包（x64）
+ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ npx electron-vite build && npx electron-builder --win
+```
+
+- 产物位于 `dist/日报工作台 Setup <version>.exe`（NSIS 安装器，双击安装）
+- 未配置 Windows 代码签名证书时会跳过签名，SmartScreen 可能提示「未知发布者」，选择「仍要运行」即可；如需消除提示需购买证书并配置 `win.certificateFile`
+- 不建议在 macOS 上交叉打包 Windows（需 Wine 且 better-sqlite3 原生模块需在 Windows 下重编译），推荐直接在 Windows 环境构建或走 CI（如 GitHub Actions `windows-latest`）
+
+其他平台：在 `package.json` 的 `build.mac.target` / `build.win.target` 中调整，或参考 [electron-builder 文档](https://www.electron.build/) 添加 `linux` 配置。
 
 ## 项目结构
 
